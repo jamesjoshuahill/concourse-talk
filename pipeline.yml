@@ -1,0 +1,58 @@
+resources:
+- name: app
+  type: git
+  source:
+    uri: https://github.com/jamesjoshuahill/concourse-talk.git
+    branch: master
+
+- name: cf
+  type: tracker
+  source:
+    token: {{pivotal-tracker-token}}
+    project_id: {{pivotal-tracker-project-id}}
+    tracker_url: https://www.pivotaltracker.com
+
+jobs:
+- name: unit
+  plan:
+  - do:
+    - get: app
+      trigger: true
+    - task: unit
+      config:
+        platform: linux
+        image: docker:///concourse/git-resource
+        inputs:
+        - name: app
+        run:
+          path: echo
+          args:
+          - passed
+
+- name: integration
+  plan:
+  - do:
+    - get: app
+      trigger: true
+      passed: [unit]
+    - task: integration
+      config:
+        platform: linux
+        image: docker:///concourse/git-resource
+        inputs:
+        - name: app
+        run:
+          path: echo
+          args:
+          - passed
+
+- name: deploy
+  plan:
+  - do:
+    - get: app
+      trigger: true
+      passed: [integration]
+    - put: cf
+      params:
+        repos:
+        - cloudfabric-ui
